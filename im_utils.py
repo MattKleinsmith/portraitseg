@@ -5,6 +5,7 @@ from PIL import Image
 
 def plots(imgs, figsize=(12, 12), rows=1, cols=1,
           interp=None, titles=None, cmap='gray'):
+    imgs = [np.array(img) for img in imgs]
     if not isinstance(imgs, list):
         imgs = [imgs]
     if not isinstance(cmap, list):
@@ -26,7 +27,14 @@ def plot(im, f=6, r=1, c=1, t=None):
     fs = f if isinstance(f, tuple) else (f, f)
     plots(im, figsize=fs, rows=r, cols=c, titles=t)
     
-    
+
 def loadim(path):
     '''Returns np.array. Loaded with PIL.'''
     return np.array(Image.open(path))
+
+
+def gray_to_rgb(gray):
+    w, h = gray.shape
+    rgb = np.empty((w, h, 3), dtype=np.uint8)
+    rgb[:, :, 2] =  rgb[:, :, 1] =  rgb[:, :, 0] = gray
+    return rgb
