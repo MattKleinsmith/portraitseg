@@ -1,12 +1,8 @@
-import random
-
-import PIL
 import numpy as np
 import pytest
 
 from portraitseg.pytorch_dataloaders import (get_train_valid_loader,
                                              get_test_loader)
-from portraitseg.utils import get_flickr_id
 
 SEED = 0
 ROOT = "../data/portraits/flickr/"

@@ -104,15 +104,8 @@ def get_train_valid_loader(data_dir,
 
     train_idx, valid_idx = indices[split:], indices[:split]
 
-    print("len(train_idx): %d" % len(train_idx))
-    print(len(valid_idx))
-
     train_sampler = SubsetRandomSampler(train_idx)
     valid_sampler = SubsetRandomSampler(valid_idx)
-
-    print(len(train_dataset))
-    print(split)
-    print(len(indices))
 
     train_loader = DataLoader(train_dataset,
                               batch_size=batch_size,
@@ -125,9 +118,6 @@ def get_train_valid_loader(data_dir,
                               sampler=valid_sampler,
                               num_workers=num_workers,
                               pin_memory=pin_memory)
-
-    print(len(train_loader))
-    print(len(valid_loader))
 
     # visualize some images
     if show_sample:
