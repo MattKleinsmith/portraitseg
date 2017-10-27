@@ -129,7 +129,7 @@ def get_train_valid_loader(data_dir,
         data_iter = iter(sample_loader)
         portraits, masks = next(data_iter)
         portraits = portraits.numpy()
-        portraits = np.transpose(portraits, [0, 2, 3, 1])
+        portraits = np.transpose(portraits, [0, 2, 3, 1]) * STD + MEAN
         masks = masks.numpy()
         plot_portraits_and_masks(portraits, masks)
 

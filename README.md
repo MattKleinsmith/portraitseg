@@ -14,7 +14,7 @@
 
 # Manual setup
 
-# Related works
+# References
 
 ## Papers
 
