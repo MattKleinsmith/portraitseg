@@ -4,6 +4,7 @@ from random import shuffle
 
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 
 
 def get_fnames(d, random=False):
