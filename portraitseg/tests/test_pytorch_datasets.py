@@ -45,7 +45,7 @@ class TestFlickrPortraitMaskDataset(object):
         index = random.randint(0, len(dataset_train) - 1)
         portrait, mask = dataset_train[index]
         assert isinstance(portrait, torch.FloatTensor)
-        assert isinstance(mask, torch.FloatTensor)
+        assert isinstance(mask, torch.LongTensor)
         portrait_fname = dataset_train.portrait_filenames[0]
         mask_fname = dataset_train.mask_filenames[0]
         portrait_id = get_flickr_id(portrait_fname)
@@ -53,7 +53,7 @@ class TestFlickrPortraitMaskDataset(object):
         assert portrait_id == mask_id
         assert portrait_id in trainlist
         assert portrait.shape == (NB_CHANNELS, HEIGHT, WIDTH)
-        assert mask.shape == (2, HEIGHT, WIDTH)
+        assert mask.shape == (HEIGHT, WIDTH)
 
     def test_len_test(self, dataset_test, testlist):
         assert len(dataset_test) == len(testlist)
@@ -62,7 +62,7 @@ class TestFlickrPortraitMaskDataset(object):
         index = random.randint(0, len(dataset_test) - 1)
         portrait, mask = dataset_test[index]
         assert isinstance(portrait, torch.FloatTensor)
-        assert isinstance(mask, torch.FloatTensor)
+        assert isinstance(mask, torch.LongTensor)
         portrait_fname = dataset_test.portrait_filenames[0]
         mask_fname = dataset_test.mask_filenames[0]
         portrait_id = get_flickr_id(portrait_fname)
@@ -70,4 +70,4 @@ class TestFlickrPortraitMaskDataset(object):
         assert portrait_id == mask_id
         assert portrait_id in testlist
         assert portrait.shape == (NB_CHANNELS, HEIGHT, WIDTH)
-        assert mask.shape == (2, HEIGHT, WIDTH)
+        assert mask.shape == (HEIGHT, WIDTH)

@@ -92,19 +92,10 @@ class FlickrPortraitMaskDataset(Dataset):
         return img
 
     def transform_mask(self, mask):
-        """Splits the mask into two mask channels."""
         mask = np.array(mask, dtype=np.int32)
-        mask_bg = (mask == 0)
-        mask_fg = (mask == 255)
-        mask_bg = np.array(mask_bg, dtype=np.int32)
-        mask_fg = np.array(mask_fg, dtype=np.int32)
-        mask = np.zeros((2,)+mask.shape, dtype=np.int32)
-        mask[0] = mask_bg
-        mask[1] = mask_fg
-        mask = torch.from_numpy(mask).float()
-        #mask = torch.from_numpy(mask).long()
+        mask = torch.from_numpy(mask).long()
         return mask
 
     def detransform_mask(self, mask):
-        mask = mask.numpy()[1]
+        mask = mask.numpy()
         return mask
