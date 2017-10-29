@@ -10,16 +10,10 @@ import numpy as np
 import torch
 from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.data import DataLoader
-import torchvision.transforms as transforms
+from torchvision import transforms
 
 from portraitseg.pytorch_datasets import FlickrPortraitMaskDataset
 from portraitseg.utils import plot_portraits_and_masks
-
-
-# TODO: Calculate these w.r.t. the Flickr dataset.
-#   Put them in the Dataset definition.
-MEAN = [0.5, 0.5, 0.5]
-STD = [0.5, 0.5, 0.5]
 
 
 def get_train_valid_loader(data_dir,
@@ -36,7 +30,8 @@ def get_train_valid_loader(data_dir,
     multi-process iterators over the CIFAR-10 dataset. A sample
     9x9 grid of the images can be optionally displayed.
 
-    If using CUDA, num_workers should be set to 1 and pin_memory to True.
+    If using CUDA, num_workers should be set to 1 and pin_memory to
+    True.
 
     Params
     ------
@@ -49,9 +44,10 @@ def get_train_valid_loader(data_dir,
       the validation set. Should be a float in the range [0, 1].
     - shuffle: whether to shuffle the train/validation indices.
     - show_sample: plot 9x9 sample grid of the dataset.
-    - num_workers: number of subprocesses to use when loading the dataset.
-    - pin_memory: whether to copy tensors into CUDA pinned memory. Set it to
-      True if using GPU.
+    - num_workers: number of subprocesses to use when loading the
+        dataset.
+    - pin_memory: whether to copy tensors into CUDA pinned memory.
+        Set it to True if using GPU.
 
     Returns
     -------
@@ -61,38 +57,26 @@ def get_train_valid_loader(data_dir,
     error_msg = "[!] valid_size should be in the range [0, 1]."
     assert ((valid_size >= 0) and (valid_size <= 1)), error_msg
 
-    normalize = transforms.Normalize(MEAN, STD)
-
-    # define transforms
-    valid_transform = transforms.Compose([
-            transforms.ToTensor(),
-            normalize
-        ])
+    # Define transforms
+    valid_transform = None
     if augment:
         train_transform = transforms.Compose([
             transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            normalize
+            transforms.RandomHorizontalFlip()
         ])
     else:
-        train_transform = transforms.Compose([
-            transforms.ToTensor(),
-            normalize
-        ])
+        train_transform = None
 
-    # load the dataset
+    # Load the Dataset
     train_dataset = FlickrPortraitMaskDataset(
             root=data_dir,
             train=True,
-            transform=train_transform,
-            target_transform=transforms.ToTensor())
+            transform=train_transform)
 
     valid_dataset = FlickrPortraitMaskDataset(
             root=data_dir,
             train=True,
-            transform=valid_transform,
-            target_transform=transforms.ToTensor())
+            transform=valid_transform)
 
     num_train = len(train_dataset)
     indices = list(range(num_train))
@@ -119,7 +103,7 @@ def get_train_valid_loader(data_dir,
                               num_workers=num_workers,
                               pin_memory=pin_memory)
 
-    # visualize some images
+    # Visualize some images
     if show_sample:
         sample_loader = torch.utils.data.DataLoader(train_dataset,
                                                     batch_size=4,
@@ -128,9 +112,8 @@ def get_train_valid_loader(data_dir,
                                                     pin_memory=pin_memory)
         data_iter = iter(sample_loader)
         portraits, masks = next(data_iter)
-        portraits = portraits.numpy()
-        portraits = np.transpose(portraits, [0, 2, 3, 1]) * STD + MEAN
-        masks = masks.numpy()
+        portraits = [train_dataset.detransform_portrait(p) for p in portraits]
+        masks = [train_dataset.detransform_mask(m) for m in masks]
         plot_portraits_and_masks(portraits, masks)
 
     return (train_loader, valid_loader)
@@ -161,19 +144,13 @@ def get_test_loader(data_dir,
     - data_loader: test set iterator.
     """
 
-    normalize = transforms.Normalize(MEAN, STD)
-
-    # define transform
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        normalize
-    ])
+    # Define transform
+    transform = None
 
     dataset = FlickrPortraitMaskDataset(
             root=data_dir,
             train=False,
-            transform=transform,
-            target_transform=transforms.ToTensor())
+            transform=transform)
 
     data_loader = DataLoader(dataset,
                              batch_size=batch_size,
