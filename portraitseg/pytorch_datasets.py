@@ -93,6 +93,7 @@ class FlickrPortraitMaskDataset(Dataset):
 
     def transform_mask(self, mask):
         mask = np.array(mask, dtype=np.int32)
+        mask = mask / 255
         mask = torch.from_numpy(mask).long()
         return mask
 

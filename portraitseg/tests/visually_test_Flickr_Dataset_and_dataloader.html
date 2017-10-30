@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8" />
-<title>simple_model_to_test_the_pipes</title>
+<title>visually_test_Flickr_Dataset_and_dataloader</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
@@ -11754,26 +11754,10 @@ div#notebook {
 <div class=" highlight hl-ipython3"><pre><span></span><span class="o">%</span><span class="k">matplotlib</span> inline
 
 <span class="kn">import</span> <span class="nn">os</span>
-<span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="s2">&quot;../&quot;</span><span class="p">)</span>
-<span class="kn">import</span> <span class="nn">random</span>
-<span class="kn">from</span> <span class="nn">time</span> <span class="k">import</span> <span class="n">time</span>
+<span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="s2">&quot;../../&quot;</span><span class="p">)</span>
 
-<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">portraitseg.common</span> <span class="k">import</span> <span class="o">*</span>
 
-<span class="kn">import</span> <span class="nn">torch</span>
-<span class="kn">from</span> <span class="nn">torch.autograd</span> <span class="k">import</span> <span class="n">Variable</span>
-<span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
-<span class="kn">import</span> <span class="nn">torch.nn.functional</span> <span class="k">as</span> <span class="nn">F</span>
-<span class="kn">import</span> <span class="nn">torch.optim</span> <span class="k">as</span> <span class="nn">optim</span>
-<span class="kn">import</span> <span class="nn">torchvision</span>
-<span class="kn">import</span> <span class="nn">torchvision.transforms</span> <span class="k">as</span> <span class="nn">transforms</span>
-
-<span class="kn">from</span> <span class="nn">portraitseg.utils</span> <span class="k">import</span> <span class="n">plots</span><span class="p">,</span> <span class="n">denormalizer</span><span class="p">,</span> <span class="n">show_input_output_target</span>
-<span class="kn">from</span> <span class="nn">portraitseg.pytorch_datasets</span> <span class="k">import</span> <span class="n">FlickrPortraitMaskDataset</span>
-<span class="kn">from</span> <span class="nn">portraitseg.pytorch_dataloaders</span> <span class="k">import</span> <span class="n">get_train_valid_loader</span>
-
-    
 <span class="k">class</span> <span class="nc">Net</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
     
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -11803,6 +11787,7 @@ div#notebook {
 <span class="n">loss_fn</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span><span class="p">()</span>
 <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">SGD</span><span class="p">(</span><span class="n">net</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="n">LR</span><span class="p">)</span>
 
+<span class="c1"># Get DataLoaders</span>
 <span class="n">trn_loader</span><span class="p">,</span> <span class="n">val_loader</span> <span class="o">=</span> <span class="n">get_train_valid_loader</span><span class="p">(</span><span class="n">FLICKR_DIR</span><span class="p">,</span>
                                                 <span class="n">batch_size</span><span class="o">=</span><span class="n">BATCH_SIZE</span><span class="p">,</span>
                                                 <span class="n">augment</span><span class="o">=</span><span class="n">AUGMENT</span><span class="p">,</span>
@@ -11812,6 +11797,7 @@ div#notebook {
                                                 <span class="n">num_workers</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
                                                 <span class="n">pin_memory</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
+<span class="c1"># Train</span>
 <span class="n">val_outputs</span> <span class="o">=</span> <span class="p">[]</span>
 <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">NB_EPOCHS</span><span class="p">):</span>
 
