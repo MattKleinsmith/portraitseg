@@ -11,6 +11,16 @@ import torch.nn.functional as F
 from PIL import Image
 
 
+def transform_portrait(img):
+    img = np.array(img, dtype=np.uint8)
+    img = img[:, :, ::-1]  # RGB -> BGR
+    img = img.astype(np.float64)
+    mean_bgr = np.array([104.00698793, 116.66876762, 122.67891434])
+    img -= mean_bgr
+    img = img.transpose(2, 0, 1)  # HxWxC --> CxHxW
+    return img
+
+
 def split_trn_val(num_train, valid_size=0.2, shuffle=False):
     indices = list(range(num_train))
     if shuffle:
