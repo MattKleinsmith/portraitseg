@@ -8,11 +8,12 @@ from PIL import Image
 import torch
 from torch.autograd import Variable
 
-from portraitseg.utils import (set_seed, scoretensor2mask,
-    rm_dir_and_ext, mask_image)
+from portraitseg.utils import (scoretensor2mask, rm_dir_and_ext,
+                               mask_image)
 from portraitseg.portraitfcn import PortraitFCNPlus
 from portraitseg.create_superportraits import get_superportrait
 from portraitseg.utils import transform_portrait
+
 
 def get_mask(args):
     portrait_fpath = args.portrait_filepath
@@ -24,14 +25,18 @@ def get_mask(args):
     portrait = Image.open(portrait_fpath)
     if arch == "fcn":
         model = PortraitFCN()
-        path_to_weights = "portraitseg/portraitfcn_untrained.pth"
+        path_to_weights = "portraitseg/weights/portraitfcn_untrained.pth"
+        weights = torch.load(path_to_weights)
         inp = transform_portrait(portrait)
     elif arch == "pfcnp":
         model = PortraitFCNPlus()
-        path_to_weights = "portraitseg/portraitfcn__plus_46_7.305E+04.pth"
+        path_to_weights = "portraitseg/logs/"
+        path_to_weights += "00001_CFG-001_GIT-7d1a2df_2017-11-02--20-04-09/"
+        path_to_weights += "model_best.pth.tar"
+        weights = torch.load(path_to_weights)['model_state_dict']
         inp = get_superportrait(portrait_fpath, points_dir=output_dir)
 
-    model.load_state_dict(torch.load(path_to_weights))
+    model.load_state_dict(weights)
     model.eval()
     inputs = Variable(torch.from_numpy(inp).float())[None, :]
     if gpu:

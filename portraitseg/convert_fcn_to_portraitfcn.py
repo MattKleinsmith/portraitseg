@@ -7,7 +7,7 @@ from portraitseg.portraitfcn import PortraitFCN
 portraitfcn = PortraitFCN()
 
 fcn8s = FCN8s()
-path_to_weights = "portraitseg/fcn8s_from_caffe.pth"
+path_to_weights = "portraitseg/weights/fcn8s_from_caffe.pth"
 fcn8s.load_state_dict(torch.load(path_to_weights))
 
 fcn8s_params = fcn8s.state_dict()
@@ -36,4 +36,4 @@ for namep, portraitfcn_param in portraitfcn.named_parameters():
         # Copy the other parameters unmodified.
         portraitfcn_param.data = fcn8s_params[namep]
 
-torch.save(portraitfcn.state_dict(), "portraitseg/portraitfcn_untrained.pth")
+torch.save(portraitfcn.state_dict(), "portraitseg/weights/portraitfcn_untrained.pth")

@@ -39,7 +39,7 @@ def get_tracker_points(portrait_path, points_dir):
     return tracker_points
 
 
-def get_config(w, h, crop_dir="../data/portraits/flickr/cropped/"):
+def get_ref_objects(w, h, crop_dir="../data/portraits/flickr/cropped/"):
     ref_points_path = crop_dir + "tracker_points_of_canonical_pose.npy"
     mean_mask_path = crop_dir + "mean_mask.png"
     ref_points = np.load(ref_points_path)
@@ -60,7 +60,7 @@ def get_config(w, h, crop_dir="../data/portraits/flickr/cropped/"):
     mean_mask_np = np.array(mean_mask, dtype=np.float64)
     mean_mask_grid = np.pad(mean_mask_np, (padding, padding), "minimum")
 
-    config = dict(
+    ref_objects = dict(
         nb_channels=nb_channels,
         im_width=im_width,
         im_height=im_height,
@@ -74,10 +74,10 @@ def get_config(w, h, crop_dir="../data/portraits/flickr/cropped/"):
         h2=h2,
         w1=w1,
         w2=w2)
-    return config
+    return ref_objects
 
 
-def get_position_and_shape_channels(dest_points, config):
+def get_position_and_shape_channels(dest_points, ref_objects):
     """
     Create a transform to project objects from the standard space to
     the space of the given portrait.
@@ -98,16 +98,16 @@ def get_position_and_shape_channels(dest_points, config):
     Synonyms in this context: "transform", "project", "align"
     """
     # Get the settings
-    padding = config['padding']
-    ref_points = config['ref_points']
-    grid_shape = config['grid_shape']
-    h1, h2 = config['h1'], config['h2']
-    w1, w2 = config['w1'], config['w2']
+    padding = ref_objects['padding']
+    ref_points = ref_objects['ref_points']
+    grid_shape = ref_objects['grid_shape']
+    h1, h2 = ref_objects['h1'], ref_objects['h2']
+    w1, w2 = ref_objects['w1'], ref_objects['w2']
 
     # Get the standard objects
-    xx_grid = config['xx_grid']
-    yy_grid = config['yy_grid']
-    mean_mask_grid = config['mean_mask_grid']
+    xx_grid = ref_objects['xx_grid']
+    yy_grid = ref_objects['yy_grid']
+    mean_mask_grid = ref_objects['mean_mask_grid']
 
     # Create the transform and use it to project the standard objects
     #   from the standard space to the space of the given portrait
@@ -127,17 +127,18 @@ def get_position_and_shape_channels(dest_points, config):
     return projected_xx, projected_yy, projected_mean_mask
 
 
-def get_superportrait(portrait_path, points_dir="./", config=None):
+def get_superportrait(portrait_path, points_dir="./", ref_objects=None):
     portrait = Image.open(portrait_path)
     w, h = portrait.size
-    if not config:
-        config = get_config(w, h)
-    nb_channels = config['nb_channels']
-    im_height = config['im_height']
-    im_width = config['im_width']
+    if not ref_objects:
+        ref_objects = get_ref_objects(w, h)
+    nb_channels = ref_objects['nb_channels']
+    im_height = ref_objects['im_height']
+    im_width = ref_objects['im_width']
     dest_points = get_tracker_points(portrait_path, points_dir)
     # Create position and shape channels
-    xx, yy, mean_mask = get_position_and_shape_channels(dest_points, config)
+    xx, yy, mean_mask = get_position_and_shape_channels(dest_points,
+                                                        ref_objects)
     # Transform portrait, and add position and shape channels
     portrait = transform_portrait(portrait)
     superportrait = np.zeros((nb_channels, im_height, im_width),
@@ -150,17 +151,18 @@ def get_superportrait(portrait_path, points_dir="./", config=None):
 
 
 def get_superportraits_of_training_portraits():
+    w, h = 600, 800  # Dimensions of cropped Flickr portraits
     data_dir = "../data/portraits/flickr/"
     crop_dir = data_dir + "cropped/"
     portrait_dir = crop_dir + "portraits/"
     superportraits_bcolz_path = crop_dir + "training_superportraits2.bcolz"
-    config = get_ref_config(crop_dir=crop_dir)
+    ref_objects = get_ref_objects(w, h, crop_dir=crop_dir)
 
     # Get superportraits
     trn_IDs = np.load(data_dir + "trainlist_clean.npy")
     trn_names = ["%05d" % i for i in trn_IDs]
     trn_fpaths = [portrait_dir + name + ".jpg" for name in trn_names]
-    superportraits = [get_superportrait(f, config) for f in trn_fpaths]
+    superportraits = [get_superportrait(f, ref_objects) for f in trn_fpaths]
     superportraits_np = np.array(superportraits)
 
     # Save superportraits

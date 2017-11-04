@@ -1,14 +1,75 @@
+import datetime
+import os
 from os import listdir
-from os.path import isfile, join
+import os.path as osp
 from random import shuffle
 import random
+import shlex
+import subprocess
+import sqlite3
 import time
 
 import matplotlib.pyplot as plt
 import numpy as np
+from PIL import Image
+import psutil
+import pytz
 import torch
 import torch.nn.functional as F
-from PIL import Image
+import yaml
+
+
+HERE = osp.dirname(osp.abspath(__file__))
+
+
+def create_log(filepath, headers):
+    if not osp.exists(filepath):
+        with open(filepath, 'w') as f:
+            f.write(','.join(headers) + '\n')
+
+
+def get_RAM():
+    return psutil.virtual_memory().used
+
+
+def git_hash():
+    cmd = 'git log -n 1 --pretty="%h"'
+    hash = subprocess.check_output(shlex.split(cmd)).strip()
+    return hash
+
+
+# https://github.com/wkentaro/pytorch-fcn/blob/master/examples/voc/train_fcn32s.py
+def get_log_dir(config_id, cfg, sample=False):
+    for k, v in cfg.copy().items():
+        if callable(v) or isinstance(v, type):
+            v = v.__name__
+            cfg[k] = v
+        elif k == "data_aug":
+            v = "%02d" % v
+        else:
+            v = str(v)
+        if k == "loss_fn_kwargs":
+            break
+    # Get current log IDs
+    if sample:
+        logs_dir = osp.join(HERE, "logs/samples")
+    else:
+        logs_dir = osp.join(HERE, "logs")
+    log_ids = [int(d.split("_")[0]) for d in listdir(logs_dir) if "CFG" in d]
+    try:
+        log_id = max(log_ids) + 1
+    except ValueError:
+        log_id = 1
+    name = "%05d_CFG-%03d" % (log_id, config_id)
+    name += "_GIT-%s" % git_hash().decode("utf-8")
+    now = datetime.datetime.now(pytz.timezone("America/Los_Angeles"))
+    name += "_%s" % now.strftime("%Y-%m-%d--%H-%M-%S")
+    log_dir = osp.join(logs_dir, name)
+    if not osp.exists(log_dir):
+        os.makedirs(log_dir)
+    with open(osp.join(log_dir, "config.yaml"), "w") as f:
+        yaml.safe_dump(dict(cfg), f, default_flow_style=False)
+    return log_dir
 
 
 def transform_portrait(img):
@@ -56,11 +117,15 @@ def scoretensor2mask(scoretensor):
     return mask
 
 
-def detransform_portrait(img, mean_bgr):
+def detransform_portrait(img, mean="voc"):
     """
     - img (torch tensor)
     Returns a numpy array.
     """
+    if mean == "voc":
+        mean_bgr = np.array([104.00698793, 116.66876762, 122.67891434])
+    else:
+        raise ValueError("unknown mean")
     #img = img.numpy().astype(np.float64)
     img = img.transpose((1, 2, 0)) # CxHxW --> HxWxC
     #img *= 255
@@ -94,8 +159,8 @@ def mask_image(img, mask, opacity=1.00, bg=False):
     return masked_image
 
 
-def show_portrait_pred_mask(portrait, preds, mask, opacity=None,
-                            bg=False, fig=None):
+def show_portrait_pred_mask(portrait, preds, mask, evaluation_interval,
+                            opacity=None, bg=False, fig=None):
     """
     Args:
         - portrait (torch tensor)
@@ -116,12 +181,12 @@ def show_portrait_pred_mask(portrait, preds, mask, opacity=None,
     cmaps.append(None)
 
     #### Prepare predictions
-    for epoch, pred in enumerate(preds):
+    for i, pred in enumerate(preds):
         pred_pil = Image.fromarray(pred)
         if opacity:
             pred_pil = mask_image(portrait_pil, pred_pil, opacity, bg)
         images.append(pred_pil)
-        titles.append("output (epoch %d)" % (epoch+1))
+        titles.append("iter. %d" % (i * evaluation_interval))
         cmaps.append("gray")
 
     #### Prepare target mask
@@ -151,7 +216,7 @@ def set_seed(seed):
 
 
 def get_fnames(d, random=False):
-    fnames = [d + f for f in listdir(d) if isfile(join(d, f))]
+    fnames = [d + f for f in listdir(d) if osp.isfile(osp.join(d, f))]
     print("Number of files found in %s: %s" % (d, len(fnames)))
     if random: shuffle(fnames)
     return fnames
