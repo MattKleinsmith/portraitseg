@@ -1,18 +1,73 @@
-# Portrait segmentation
+# [Work In Progress] Portrait segmentation
+
+# Warning: The commands below don't work yet.
 
 ## Input: portrait.jpg
 (example)
 
-## Output: mask.jpg
+## Output: mask.png
 (example)
 
 ## More examples
 (more examples, 2x4 grid)
 
-# Docker setup
+# Quick start
+
+## To turn a portrait into a mask
+
+### Via CPU
+
+`./portrait.sh portrait.jpg`
+
+Uses Docker.
+
+### Via GPU (Linux only)
+
+1. Install [nvidia-docker](https://github.com/NVIDIA/nvidia-docker#quick-start) (requires Linux)
+2. Run `./portrait.sh --gpu portrait.jpg`
+
+# Docker commands
+
+## To turn a portrait into a mask
+
+### CPU
+
+`docker run --rm mwksmith/portraitseg portrait.jpg`
+
+### GPU
+
+`nvidia-docker run --rm mwksmith/portraitseg:gpu portrait.jpg`
+
+## To explore the code in a Jupyter notebook
 
 
-# Manual setup
+### CPU
+
+1. Run `docker run --shm-size=2g -p 8888:8888 mwksmith/portraitseg run_notebook.sh`
+2. Navigate to http://localhost:8888/notebooks/portraitseg.ipynb
+
+### GPU
+
+1. Run `nvidia-docker run --shm-size=2g -p 8888:8888 mwksmith/portraitseg:gpu run_notebook.sh`
+2. Navigate to http://localhost:8888/notebooks/portraitseg_gpu.ipynb
+
+### To access the Docker container's bash
+
+1. Run `name=$(docker ps --format "{{.Names}}")`
+2. Run `docker exec -it $name bash`
+
+### Options
+
+- Jupyter notebook port: 8888
+- Shared memory size: 2 GB
+    - If memory size becomes an issue, maximize it by replacing `--shm-size=2g` with `--ipc=host`. See [NVIDIA's documentation](http://docs.nvidia.com/deeplearning/dgx/pytorch-release-notes/running.html) for details.
+
+
+# Manual setup (no Docker)
+
+`git clone`
+
+(and other steps)
 
 # References
 
@@ -31,7 +86,7 @@
 
 ## Data
 
-- [Flickr portrait-mask dataset from Shen et al. 2016](https://www.dropbox.com/s/7vl1sprdln8dg9k/EG_code_data_release.zip?dl=0) (mirror provided by [timbe16](https://github.com/PetroWu/AutoPortraitMatting/issues/22))
+- [Flickr portrait-mask dataset from Shen et al. 2016](https://github.com/PetroWu/AutoPortraitMatting/issues/22) (mirror provided by timbe16)
 
 ## Pretrained models
 
@@ -43,9 +98,6 @@
 - [PyTorch - Defining Datasets](http://pytorch.org/tutorials/beginner/data_loading_tutorial.html)
 - [Fast.ai - Deep learning course for coders](http://course.fast.ai)
 
-# Background
-
-This is my submission to the Fellowship.ai CelebA portrait segmentation challenge.
 
 # Licenses
 
@@ -57,4 +109,4 @@ In general: Anything I've created here is under MIT. Anything others have create
 
 ## Data
 
-# Acknowledgements
+## Implications
