@@ -17,9 +17,8 @@
 
 ### Via CPU
 
-`./portrait.sh portrait.jpg`
-
-Uses Docker.
+1. Install Docker ([Ubuntu](https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/)) ([Mac](https://docs.docker.com/docker-for-mac/install/)) ([Windows](https://docs.docker.com/docker-for-windows/install/))
+2. Run `./portrait.sh portrait.jpg`
 
 ### Via GPU (Linux only)
 
