@@ -1,5 +1,3 @@
-import datetime
-import os
 from os import listdir
 import os.path as osp
 from random import shuffle
@@ -7,19 +5,139 @@ import random
 import shlex
 import subprocess
 import sqlite3
-import time
 
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 import psutil
-import pytz
+import pandas as pd
+from pandas.io.sql import DatabaseError
+from psycopg2.extensions import register_adapter, AsIs
+
+import psycopg2
+from psycopg2.sql import SQL, Identifier
 import torch
 import torch.nn.functional as F
-import yaml
 
 
-HERE = osp.dirname(osp.abspath(__file__))
+def register_numpy_types():
+    # Credit: https://github.com/musically-ut/psycopg2_numpy_ext
+    """Register the AsIs adapter for following types from numpy:
+      - numpy.int8
+      - numpy.int16
+      - numpy.int32
+      - numpy.int64
+      - numpy.float16
+      - numpy.float32
+      - numpy.float64
+      - numpy.float128
+    """
+    for typ in ['int8', 'int16', 'int32', 'int64',
+                'float16', 'float32', 'float64', 'float128',
+                'bool_']:
+        register_adapter(np.__getattribute__(typ), AsIs)
+
+
+def get_max_of_db_column(db_connect_str, table_name, column_name):
+    conn = psycopg2.connect(db_connect_str)
+    cur = conn.cursor()
+    parameters = [Identifier(column_name), Identifier(table_name)]
+    cur.execute(SQL("SELECT MAX({}) FROM {}").format(*parameters))
+    max_value = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    return max_value
+
+
+def insert_into_table(db_connect_str, table_name, key_value_pairs):
+    register_numpy_types()
+    table_name = Identifier(table_name)
+    fields = [Identifier(field) for field in key_value_pairs.keys()]
+    values = [v.__name__ if callable(v) or isinstance(v, type) else v
+              for v in key_value_pairs.values()]
+    conn = psycopg2.connect(db_connect_str)
+    cur = conn.cursor()
+    insert_part = "INSERT INTO {}"
+    field_positions = get_format_positions(len(key_value_pairs), "{}")
+    fields_part = "({})".format(field_positions)
+    value_positions = get_format_positions(len(key_value_pairs), "%s")
+    values_part = "VALUES ({})".format(value_positions)
+    query = insert_part + " " + fields_part + " " + values_part
+    query = SQL(query).format(table_name, *fields)
+    cur.execute(query, values)
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def update_table(db_connect_str, table_name, key_value_pairs):
+    row_id = key_value_pairs.copy().pop("id")
+    register_numpy_types()
+    table_name = Identifier(table_name)
+    fields = [Identifier(field) for field in key_value_pairs.keys()]
+    values = [v.__name__ if callable(v) or isinstance(v, type) else v
+              for v in key_value_pairs.values()]
+    conn = psycopg2.connect(db_connect_str)
+    cur = conn.cursor()
+    update_part = "UPDATE {}"
+    placeholders = get_format_positions(len(key_value_pairs), "{} = %s")
+    set_part = "SET {}".format(placeholders)
+    where_part = "WHERE id = %s"
+    query = update_part + " " + set_part + " " + where_part
+    query = SQL(query).format(table_name, *fields)
+    parameters = values + [row_id]
+    cur.execute(query, parameters)
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def get_format_positions(num, form):
+    positions = ''
+    for _ in range(num-1):
+        positions += (form + ", ")
+    positions += form
+    return positions
+
+
+def choose(x):
+    return np.random.choice(x)
+
+
+def print_separator():
+    print("-"*80)
+
+
+def get_database_path(here):
+    return osp.join(osp.join(here, "logs"), "database.sqlite")
+
+
+def load_sqlite_table(database_path, table_name):
+    """Returns (table, connection). table is a pandas DataFrame."""
+    conn = sqlite3.connect(database_path)
+    try:
+        df = pd.read_sql("SELECT * FROM %s" % table_name, conn)
+        #  print("\nLoading %s table from SQLite3 database." % table_name)
+    except DatabaseError as e:
+        if 'no such table' in e.args[0]:
+            print("\nNo such table: %s" % table_name)
+            print("Create the table before loading it. " +
+                  "Consider using the create_sqlite_table function")
+            raise DatabaseError
+        else:
+            print(e)
+            raise Exception("Failed to create %s table. Unknown error." %
+                            table_name)
+    return df, conn
+
+
+def create_sqlite_table(database_path, table_name, table_header):
+    """Returns (table, connection). table is a pandas DataFrame."""
+    conn = sqlite3.connect(database_path)
+    print("\nCreating %s table in SQLite3 database." % table_name)
+    df = pd.DataFrame(columns=table_header)
+    df.to_sql(table_name, conn, index=False)
+    return df, conn
 
 
 def create_log(filepath, headers):
@@ -38,40 +156,6 @@ def git_hash():
     return hash
 
 
-# https://github.com/wkentaro/pytorch-fcn/blob/master/examples/voc/train_fcn32s.py
-def get_log_dir(config_id, cfg, sample=False):
-    for k, v in cfg.copy().items():
-        if callable(v) or isinstance(v, type):
-            v = v.__name__
-            cfg[k] = v
-        elif k == "data_aug":
-            v = "%02d" % v
-        else:
-            v = str(v)
-        if k == "loss_fn_kwargs":
-            break
-    # Get current log IDs
-    if sample:
-        logs_dir = osp.join(HERE, "logs/samples")
-    else:
-        logs_dir = osp.join(HERE, "logs")
-    log_ids = [int(d.split("_")[0]) for d in listdir(logs_dir) if "CFG" in d]
-    try:
-        log_id = max(log_ids) + 1
-    except ValueError:
-        log_id = 1
-    name = "%05d_CFG-%03d" % (log_id, config_id)
-    name += "_GIT-%s" % git_hash().decode("utf-8")
-    now = datetime.datetime.now(pytz.timezone("America/Los_Angeles"))
-    name += "_%s" % now.strftime("%Y-%m-%d--%H-%M-%S")
-    log_dir = osp.join(logs_dir, name)
-    if not osp.exists(log_dir):
-        os.makedirs(log_dir)
-    with open(osp.join(log_dir, "config.yaml"), "w") as f:
-        yaml.safe_dump(dict(cfg), f, default_flow_style=False)
-    return log_dir
-
-
 def transform_portrait(img):
     img = np.array(img, dtype=np.uint8)
     img = img[:, :, ::-1]  # RGB -> BGR
@@ -87,19 +171,30 @@ def split_trn_val(num_train, valid_size=0.2, shuffle=False):
     if shuffle:
         np.random.shuffle(indices)
     split = int(np.floor(valid_size * num_train))
-    indices_trn, indices_val = indices[split:], indices[:split]
-    return indices_trn, indices_val
+    trn_indices, val_indices = indices[split:], indices[:split]
+    return trn_indices, val_indices
 
 
-def cross_entropy2d(input, target, weight=None, size_average=True):
-    n, c, h, w = input.size()
-    log_p = F.log_softmax(input)
+def cross_entropy2d(score, target, weight=None, size_average=True):
+    log_p = F.log_softmax(score)
+
+    # Flatten the score tensor
+    n, c, h, w = score.size()
     log_p = log_p.transpose(1, 2).transpose(2, 3).contiguous().view(-1, c)
+    # Remove guesses corresponding to "unknown" labels
+    # (labels that are less than zero)
     log_p = log_p[target.view(n * h * w, 1).repeat(1, c) >= 0]
     log_p = log_p.view(-1, c)
+
+    # Remove "unknown" labels (labels that are less than zero)
+    # Also, flatten the target tensor
+    # TODO: Replace this entire function with nn.functional.cross_entropy
+    #   with ignore_index set to -1.
     mask = target >= 0
     target = target[mask]
+
     loss = F.nll_loss(log_p, target, weight=weight, size_average=False)
+
     if size_average:
         loss /= mask.data.sum()
     return loss
@@ -126,9 +221,9 @@ def detransform_portrait(img, mean="voc"):
         mean_bgr = np.array([104.00698793, 116.66876762, 122.67891434])
     else:
         raise ValueError("unknown mean")
-    #img = img.numpy().astype(np.float64)
-    img = img.transpose((1, 2, 0)) # CxHxW --> HxWxC
-    #img *= 255
+    #  img = img.numpy().astype(np.float64)
+    img = img.transpose((1, 2, 0))  # CxHxW --> HxWxC
+    #  img *= 255
     img += mean_bgr
     img = img[:, :, ::-1]  # BGR -> RGB
     img = img.astype(np.uint8)
@@ -136,7 +231,7 @@ def detransform_portrait(img, mean="voc"):
 
 
 def detransform_mask(mask):
-    #mask = mask.numpy()
+    #  mask = mask.numpy()
     mask = mask.astype(np.uint8)
     mask *= 255
     return mask
@@ -159,7 +254,8 @@ def mask_image(img, mask, opacity=1.00, bg=False):
     return masked_image
 
 
-def show_portrait_pred_mask(portrait, preds, mask, evaluation_interval,
+def show_portrait_pred_mask(portrait, preds, mask, start_iteration,
+                            evaluation_interval,
                             opacity=None, bg=False, fig=None):
     """
     Args:
@@ -174,22 +270,22 @@ def show_portrait_pred_mask(portrait, preds, mask, evaluation_interval,
     titles = []
     cmaps = []
 
-    #### Prepare portrait
+    #  ### Prepare portrait
     portrait_pil = Image.fromarray(portrait)
     images.append(portrait)
     titles.append("input")
     cmaps.append(None)
 
-    #### Prepare predictions
+    #  ### Prepare predictions
     for i, pred in enumerate(preds):
         pred_pil = Image.fromarray(pred)
         if opacity:
             pred_pil = mask_image(portrait_pil, pred_pil, opacity, bg)
         images.append(pred_pil)
-        titles.append("iter. %d" % (i * evaluation_interval))
+        titles.append("iter. %d" % (start_iteration + i * evaluation_interval))
         cmaps.append("gray")
 
-    #### Prepare target mask
+    #  ### Prepare target mask
     if opacity:
         mask_pil = Image.fromarray(mask)
         mask = mask_image(portrait_pil, mask_pil, opacity, bg)
@@ -218,11 +314,14 @@ def set_seed(seed):
 def get_fnames(d, random=False):
     fnames = [d + f for f in listdir(d) if osp.isfile(osp.join(d, f))]
     print("Number of files found in %s: %s" % (d, len(fnames)))
-    if random: shuffle(fnames)
+    if random:
+        shuffle(fnames)
     return fnames
+
 
 def rm_dir_and_ext(filepath):
     return filepath.split('/')[-1].split('.')[-2]
+
 
 def get_flickr_id(portrait_fname):
     """
@@ -241,7 +340,7 @@ def get_lines(fname):
 
 
 def hist(data, figsize=(6, 3)):
-    fig = plt.figure(figsize=figsize)
+    plt.figure(figsize=figsize)
     plt.hist(data)
     plt.show()
 
@@ -264,7 +363,7 @@ def plot_portraits_and_masks(portraits, masks):
 def gray2rgb(gray):
     w, h = gray.shape
     rgb = np.empty((w, h, 3), dtype=np.uint8)
-    rgb[:, :, 2] =  rgb[:, :, 1] =  rgb[:, :, 0] = gray
+    rgb[:, :, 2] = rgb[:, :, 1] = rgb[:, :, 0] = gray
     return rgb
 
 
@@ -289,6 +388,10 @@ def plots(imgs, figsize=(12, 12), rows=None, cols=None,
     elif not cols:
         cols = rows
     if not fig:
+        rows = int(np.ceil(len(imgs) / cols))
+        w = 12
+        h = rows * (w / cols + 1)
+        figsize = (w, h)
         fig = plt.figure(figsize=figsize)
     fontsize = 13 if cols == 5 else 16
     fig.set_figheight(figsize[1], forward=True)
@@ -300,5 +403,6 @@ def plots(imgs, figsize=(12, 12), rows=None, cols=None,
         plt.imshow(imgs[i], interpolation=interp[i], cmap=cmap[i])
         plt.axis('off')
         plt.subplots_adjust(0, 0, 1, 1, .1, 0)
-        #plt.tight_layout()
-    if fig: fig.canvas.draw()
+        #  plt.tight_layout()
+    if fig:
+        fig.canvas.draw()

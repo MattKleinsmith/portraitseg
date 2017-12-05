@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+
 # https://github.com/wkentaro/pytorch-fcn/blob/master/torchfcn/models/fcn32s.py
 def get_upsampling_weight(in_channels, out_channels, kernel_size):
     """Make a 2D bilinear kernel suitable for upsampling"""
@@ -17,6 +18,7 @@ def get_upsampling_weight(in_channels, out_channels, kernel_size):
                       dtype=np.float64)
     weight[range(in_channels), range(out_channels), :, :] = filt
     return torch.from_numpy(weight).float()
+
 
 # https://github.com/wkentaro/pytorch-fcn/blob/master/torchfcn/models/fcn8s.py
 # Edit: Added a dropout parameter to the class definition
@@ -173,12 +175,11 @@ class FCN8s(nn.Module):
                 l2.bias.data.copy_(l1.bias.data)
 
 
-
 class PortraitFCN(FCN8s):
     def __init__(self, n_class=2, dropout=0.5):
         super().__init__(n_class=n_class, dropout=dropout)
         self.name = "pfcn"
-        self.n_class=n_class
+        self.n_class = n_class
 
 
 class PortraitFCNPlus(PortraitFCN):
@@ -196,7 +197,8 @@ class PortraitFCNPlus(PortraitFCN):
         n = k * k * c_out
         superkernels = torch.from_numpy(np.zeros((c_out, c_in, k, k)))
         for i, kernel in enumerate(kernels):
-            superkernel = torch.from_numpy(np.random.normal(0, np.sqrt(2./n), size=size))
+            superkernel = torch.from_numpy(np.random.normal(0, np.sqrt(2./n),
+                                                            size=size))
             superkernel[:3] = kernel
             superkernels[i] = superkernel
         self.conv1_1.weight.data = superkernels.float()
@@ -245,7 +247,7 @@ class FCN8s_probe(FCN8s):
         h = self.drop7(h)
         activations.append(('fr', h))
 
-        h = self.score_fr(h) # 1/32
+        h = self.score_fr(h)  # 1/32
         activations.append(('score_fr', h))
         h = self.upscore2(h)
         upscore2 = h  # 1/16
