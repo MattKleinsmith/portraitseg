@@ -1,72 +1,6 @@
-# [Work In Progress] Portrait segmentation
+# Portrait segmentation
 
-# Warning: The commands below don't work yet.
-
-## Input: portrait.jpg
-(example)
-
-## Output: mask.png
-(example)
-
-## More examples
-(more examples, 2x4 grid)
-
-# Quick start
-
-## To turn a portrait into a mask
-
-### Via CPU
-
-1. Install Docker ([Ubuntu](https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/)) ([Mac](https://docs.docker.com/docker-for-mac/install/)) ([Windows](https://docs.docker.com/docker-for-windows/install/))
-2. Run `./portrait.sh portrait.jpg`
-
-### Via GPU (Linux only)
-
-1. Install [nvidia-docker](https://github.com/NVIDIA/nvidia-docker#quick-start) (requires Linux)
-2. Run `./portrait.sh --gpu portrait.jpg`
-
-# Docker commands
-
-## To turn a portrait into a mask
-
-### CPU
-
-`docker run --rm mwksmith/portraitseg portrait.jpg`
-
-### GPU
-
-`nvidia-docker run --rm mwksmith/portraitseg:gpu portrait.jpg`
-
-## To explore the code in a Jupyter notebook
-
-
-### CPU
-
-1. Run `docker run --shm-size=2g -p 8888:8888 mwksmith/portraitseg run_notebook.sh`
-2. Navigate to http://localhost:8888/notebooks/portraitseg.ipynb
-
-### GPU
-
-1. Run `nvidia-docker run --shm-size=2g -p 8888:8888 mwksmith/portraitseg:gpu run_notebook.sh`
-2. Navigate to http://localhost:8888/notebooks/portraitseg_gpu.ipynb
-
-### To access the Docker container's bash
-
-1. Run `name=$(docker ps --format "{{.Names}}")`
-2. Run `docker exec -it $name bash`
-
-### Options
-
-- Jupyter notebook port: 8888
-- Shared memory size: 2 GB
-    - If memory size becomes an issue, maximize it by replacing `--shm-size=2g` with `--ipc=host`. See [NVIDIA's documentation](http://docs.nvidia.com/deeplearning/dgx/pytorch-release-notes/running.html) for details.
-
-
-# Manual setup (no Docker)
-
-`git clone`
-
-(and other steps)
+If you have questions, please create an issue. Polishing this repo is on my TODO list, but it's not a priority.
 
 # References
 
@@ -101,11 +35,3 @@
 # Licenses
 
 In general: Anything I've created here is under MIT. Anything others have created is under various licenses.
-
-## Code
-
-## Models
-
-## Data
-
-## Implications
